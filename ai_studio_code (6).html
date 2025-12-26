@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Digital Addiction: System Failure</title>
+    <!-- 3D & Animation Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;500;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --neon-blue: #00f3ff;
+            --neon-red: #ff003c;
+            --neon-purple: #bc13fe;
+            --neon-green: #0aff0a;
+            --bg-dark: #020202;
+            --glass: rgba(10, 15, 30, 0.85);
+            --border: rgba(255, 255, 255, 0.1);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; cursor: none; }
+
+        body {
+            background-color: var(--bg-dark);
+            color: #eee;
+            font-family: 'Rajdhani', sans-serif;
+            overflow-x: hidden;
+        }
+
+        /* CUSTOM CURSOR */
+        #cursor {
+            position: fixed; top: 0; left: 0; width: 20px; height: 20px;
+            border: 2px solid var(--neon-blue); border-radius: 50%;
+            pointer-events: none; z-index: 9999; transform: translate(-50%, -50%);
+            transition: width 0.2s, height 0.2s, background 0.2s;
+            mix-blend-mode: difference;
+        }
+        #cursor.hovered { width: 50px; height: 50px; background: rgba(0, 243, 255, 0.2); border-color: transparent; }
+
+        /* 3D CANVAS */
+        #canvas-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; }
+
+        /* SCROLL BAR */
+        #scroll-progress {
+            position: fixed; top: 0; left: 0; height: 3px; background: var(--neon-blue);
+            width: 0%; z-index: 1000; box-shadow: 0 0 10px var(--neon-blue);
+        }
+
+        /* TYPOGRAPHY & LAYOUT */
+        main { position: relative; z-index: 2; width: 100%; overflow: hidden; }
+
+        section {
+            min-height: 100vh; padding: 4rem 2rem;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            opacity: 0; transform: translateY(50px); transition: all 1s ease;
+        }
+        section.visible { opacity: 1; transform: translateY(0); }
+
+        h1, h2, h3 { font-family: 'Orbitron', sans-serif; text-transform: uppercase; }
+        
+        h1 {
+            font-size: clamp(3rem, 8vw, 6rem); line-height: 0.9;
+            background: linear-gradient(to right, #fff, var(--neon-blue));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            margin-bottom: 1rem; text-align: center;
+        }
+
+        h2 { font-size: 3rem; color: var(--neon-blue); margin-bottom: 2rem; text-shadow: 0 0 10px rgba(0,243,255,0.5); text-align: center;}
+        
+        p { font-size: 1.3rem; max-width: 800px; line-height: 1.6; color: #aaa; margin-bottom: 1.5rem; text-align: center; }
+
+        /* CARDS */
+        .glass-card {
+            background: var(--glass); border: 1px solid var(--border);
+            padding: 3rem; border-radius: 4px; position: relative;
+            box-shadow: 0 0 30px rgba(0,0,0,0.5); backdrop-filter: blur(10px);
+            max-width: 1000px; width: 100%; margin: 1rem 0;
+            clip-path: polygon(20px 0, 100% 0, 100% calc(100% - 20px), calc(100% - 20px) 100%, 0 100%, 0 20px);
+        }
+
+        .grid-container {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 2rem; width: 100%;
+        }
+
+        .info-box {
+            background: rgba(255,255,255,0.03); border-left: 3px solid var(--neon-blue);
+            padding: 1.5rem; transition: 0.3s;
+        }
+        .info-box:hover { transform: translateX(10px); background: rgba(0,243,255,0.05); }
+        .info-box h3 { font-size: 1.2rem; margin-bottom: 0.5rem; color: #fff; }
+        .info-box p { font-size: 1rem; text-align: left; margin: 0; color: #ccc; }
+
+        /* INTERACTIVE BUTTONS */
+        .cyber-btn {
+            padding: 15px 40px; font-family: 'Orbitron'; font-weight: bold; font-size: 1rem;
+            color: var(--neon-blue); border: 2px solid var(--neon-blue); background: transparent;
+            cursor: none; position: relative; overflow: hidden; transition: 0.3s;
+            margin-top: 1rem; text-transform: uppercase; letter-spacing: 2px;
+            clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+            display: inline-block;
+        }
+        .cyber-btn::before {
+            content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%;
+            background: var(--neon-blue); transition: 0.3s; z-index: -1;
+        }
+        .cyber-btn:hover { color: #000; box-shadow: 0 0 20px var(--neon-blue); }
+        .cyber-btn:hover::before { left: 0; }
+
+        .cyber-btn.danger { color: var(--neon-red); border-color: var(--neon-red); }
+        .cyber-btn.danger::before { background: var(--neon-red); }
+        .cyber-btn.danger:hover { box-shadow: 0 0 20px var(--neon-red); }
+
+        /* NEW: VISUALIZATION BUTTONS */
+        .vis-btn {
+            margin-top: 30px; border: 1px dashed; font-size: 0.9rem;
+            animation: pulse-glow 2s infinite;
+        }
+        @keyframes pulse-glow { 0%{opacity:0.8;} 50%{opacity:1; box-shadow:0 0 15px currentColor;} 100%{opacity:0.8;} }
+
+        /* HABIT TOGGLES */
+        .habit-row {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 1.5rem; border-bottom: 1px solid var(--border); transition: 0.3s;
+        }
+        .habit-row:last-child { border-bottom: none; }
+        .habit-row.active { background: rgba(10, 255, 10, 0.1); border-left: 4px solid var(--neon-green); }
+        .status-indicator { font-family: 'Orbitron'; font-size: 0.9rem; color: #666; }
+        .habit-row.active .status-indicator { color: var(--neon-green); text-shadow: 0 0 5px var(--neon-green); }
+
+        /* BROKEN SCREEN OVERLAY */
+        #broken-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; z-index: 10000; display: none;
+            justify-content: center; align-items: center; text-align: center;
+            overflow: hidden;
+        }
+        .crack-line { position: absolute; background: #fff; opacity: 0; }
+        .final-message { font-family: 'Orbitron'; color: #fff; font-size: 2rem; opacity: 0; }
+        @keyframes glitch-anim {
+            0% { transform: translate(0); }
+            20% { transform: translate(-2px, 2px); clip-path: inset(10% 0 80% 0); }
+            40% { transform: translate(2px, -2px); clip-path: inset(50% 0 10% 0); }
+            60% { transform: translate(-2px, -2px); clip-path: inset(0 0 0 0); }
+            100% { transform: translate(0); }
+        }
+
+        /* LOADING */
+        #loader {
+            position: fixed; inset: 0; background: #000; z-index: 2000;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+        }
+        .loader-bar { width: 200px; height: 2px; background: #333; margin-top: 20px; position: relative; }
+        .loader-fill { width: 0%; height: 100%; background: var(--neon-blue); position: absolute; }
+
+        /* --- NEW: MODAL & VISUALIZATIONS CSS --- */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.95); z-index: 5000;
+            display: none; justify-content: center; align-items: center;
+            backdrop-filter: blur(10px); opacity: 0; transition: opacity 0.5s;
+        }
+        .modal-container {
+            width: 90%; max-width: 1200px; height: 80vh;
+            border: 1px solid var(--neon-blue); position: relative;
+            background: radial-gradient(circle, rgba(0,243,255,0.05) 0%, rgba(0,0,0,1) 90%);
+        }
+        .modal-close {
+            position: absolute; top: 20px; right: 20px;
+            color: #fff; font-size: 2rem; cursor: pointer; border: 1px solid #fff;
+            width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;
+            z-index: 5001;
+        }
+        .modal-close:hover { background: var(--neon-red); border-color: var(--neon-red); }
+        .modal-content { display: none; width: 100%; height: 100%; position: relative; }
+        .modal-content.active { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+
+        /* Diagram Logic */
+        .diagram-container { display: flex; gap: 2rem; flex-wrap: wrap; justify-content: center; align-items: center; }
+        .d-node {
+            width: 140px; height: 140px; border: 2px solid var(--neon-purple); border-radius: 50%;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            text-align: center; font-family: 'Orbitron'; color: var(--neon-purple);
+            box-shadow: 0 0 15px rgba(188,19,254,0.3);
+        }
+        .arrow { font-size: 2rem; color: #fff; animation: bounceRight 1s infinite; }
+        @keyframes bounceRight { 0%,100%{transform:translateX(0);} 50%{transform:translateX(10px);} }
+
+    </style>
+</head>
+<body>
+
+    <!-- CUSTOM CURSOR -->
+    <div id="cursor"></div>
+
+    <!-- SCROLL PROGRESS -->
+    <div id="scroll-progress"></div>
+
+    <!-- LOADER -->
+    <div id="loader">
+        <h2 style="font-size: 1.5rem; margin:0;">SYSTEM BOOT</h2>
+        <div class="loader-bar"><div class="loader-fill"></div></div>
+    </div>
+
+    <!-- --- NEW: MODAL OVERLAY --- -->
+    <div class="modal-overlay" id="viz-modal">
+        <div class="modal-container">
+            <div class="modal-close" onclick="closeModal()">✕</div>
+            
+            <!-- Vis 1: Neural Network -->
+            <div class="modal-content" id="vis-1">
+                <h2 style="position:absolute; top:20px; width:100%;">NEURAL OVERLOAD SCAN</h2>
+                <canvas id="neural-canvas" style="width:100%; height:100%;"></canvas>
+                <p style="position:absolute; bottom:20px; background:#000;">Visual representation of cognitive noise.</p>
+            </div>
+
+            <!-- Vis 2: Diagram -->
+            <div class="modal-content" id="vis-2">
+                <h2 style="color:var(--neon-purple); margin-bottom:50px;">THE DOPAMINE LOOP</h2>
+                <div class="diagram-container">
+                    <div class="d-node">TRIGGER<br><small>(Ping)</small></div>
+                    <div class="arrow">➔</div>
+                    <div class="d-node">ACTION<br><small>(Check)</small></div>
+                    <div class="arrow">➔</div>
+                    <div class="d-node" style="border-color:#fff; color:#fff; box-shadow:0 0 30px #fff;">REWARD<br><small>(Dopamine)</small></div>
+                    <div class="arrow">➔</div>
+                    <div class="d-node">INVESTMENT<br><small>(Time)</small></div>
+                </div>
+            </div>
+
+            <!-- Vis 3: 3D Body -->
+            <div class="modal-content" id="vis-3">
+                <h2 style="color:var(--neon-red); position:absolute; top:20px; z-index:10;">SYSTEM DAMAGE REPORT</h2>
+                <div id="body-container" style="width:100%; height:100%;"></div>
+                <div style="position:absolute; bottom:30px; display:flex; gap:20px;">
+                    <span style="border:1px solid var(--neon-red); color:var(--neon-red); padding:5px;">⚠ EYES</span>
+                    <span style="border:1px solid var(--neon-red); color:var(--neon-red); padding:5px;">⚠ SPINE</span>
+                    <span style="border:1px solid var(--neon-red); color:var(--neon-red); padding:5px;">⚠ SLEEP</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- BROKEN SCREEN FINALE -->
+    <div id="broken-overlay">
+        <div class="final-message">
+            <h1 style="color: #fff; text-shadow: none;">SYSTEM OFF.</h1>
+            <p>You have broken the cycle.</p>
+            <p style="font-size: 1rem; color: #666; margin-top: 20px;">Now go outside.</p>
+            <br>
+            <button class="cyber-btn" onclick="location.reload()">REBOOT SYSTEM</button>
+        </div>
+    </div>
+
+    <!-- 3D BACKGROUND -->
+    <div id="canvas-container"></div>
+
+    <main>
+        <!-- HERO -->
+        <section id="hero">
+            <p style="color: var(--neon-blue); letter-spacing: 5px;">WARNING: HIGH LATENCY DETECTED</p>
+            <h1>DIGITAL<br>ADDICTION</h1>
+            <p>An urgent campaign for Teenagers, Parents, and Educators.</p>
+            <button class="cyber-btn" onclick="document.getElementById('intro').scrollIntoView({behavior: 'smooth'})">ENTER THE SYSTEM</button>
+        </section>
+
+        <!-- SECTION 1: THE DIAGNOSIS -->
+        <section id="intro">
+            <div class="glass-card">
+                <h2>1. The Glitch</h2>
+                <p>Digital addiction is not a habit. It is a <strong>reprogramming</strong> of your behavior.</p>
+                <div class="grid-container">
+                    <div class="info-box">
+                        <h3>Uncontrolled Use</h3>
+                        <p>It starts with "checking" and ends with "domination". Apps and games replace daily priorities.</p>
+                    </div>
+                    <div class="info-box">
+                        <h3>The Symptoms</h3>
+                        <p>Compulsive checking, phantom vibrations, anxiety when offline, and loss of time perception.</p>
+                    </div>
+                    <div class="info-box">
+                        <h3>Quality of Life</h3>
+                        <p>Diminished attention span, emotional volatility, and fragmented sleep patterns.</p>
+                    </div>
+                </div>
+                <!-- ADDED BUTTON -->
+                <center>
+                    <button class="cyber-btn vis-btn" onclick="openModal(1)">👁️ VIEW NEURAL ACTIVITY</button>
+                </center>
+            </div>
+        </section>
+
+        <!-- SECTION 2: THE NEUROSCIENCE -->
+        <section>
+            <div class="glass-card" style="border-color: var(--neon-purple);">
+                <h2 style="color: var(--neon-purple);">2. The Dopamine Loop</h2>
+                <p>Why is it so hard to stop scrolling? Your brain is being hacked.</p>
+                
+                <div style="display: flex; flex-direction: column; gap: 20px; width: 100%;">
+                    <div style="display: flex; align-items: center; gap: 20px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 20px;">
+                        <div style="font-size: 3rem;">🎣</div>
+                        <div>
+                            <h3 style="color: #fff;">Designed to Hook</h3>
+                            <p style="text-align: left;">Infinite scrolls and variable rewards (like slot machines) keep your brain hunting for the next "hit".</p>
+                        </div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 20px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 20px;">
+                        <div style="font-size: 3rem;">🧪</div>
+                        <div>
+                            <h3 style="color: #fff;">Teen Vulnerability</h3>
+                            <p style="text-align: left;">Adolescent brains are still developing impulse control. They are chemically more susceptible to social validation.</p>
+                        </div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 20px;">
+                        <div style="font-size: 3rem;">😱</div>
+                        <div>
+                            <h3 style="color: #fff;">FOMO Protocol</h3>
+                            <p style="text-align: left;">The "Fear Of Missing Out" triggers a survival instinct, making disconnection feel like social death.</p>
+                        </div>
+                    </div>
+                </div>
+                <!-- ADDED BUTTON -->
+                <center>
+                    <button class="cyber-btn vis-btn" style="border-color:var(--neon-purple); color:var(--neon-purple);" onclick="openModal(2)">🔄 VIEW LOOP DIAGRAM</button>
+                </center>
+            </div>
+        </section>
+
+        <!-- SECTION 3: PROFOUND EFFECTS -->
+        <section>
+            <div class="glass-card" style="border-color: var(--neon-red);">
+                <h2 style="color: var(--neon-red);">3. System Damage</h2>
+                <p>The consequences of long-term exposure are critical.</p>
+                
+                <div class="grid-container">
+                    <div class="info-box" style="border-left-color: var(--neon-red);">
+                        <h3>🧠 Psychological</h3>
+                        <p>Chronic stress, high anxiety, depression, and low self-esteem fueled by comparison.</p>
+                    </div>
+                    <div class="info-box" style="border-left-color: var(--neon-red);">
+                        <h3>😶 Social Atrophy</h3>
+                        <p>Isolation behind screens leads to weaker real-life communication skills and loneliness.</p>
+                    </div>
+                    <div class="info-box" style="border-left-color: var(--neon-red);">
+                        <h3>📉 Academic Decline</h3>
+                        <p>Inability to focus deeply (Deep Work) leads to procrastination and poor grades.</p>
+                    </div>
+                    <div class="info-box" style="border-left-color: var(--neon-red);">
+                        <h3>🦴 Physical Decay</h3>
+                        <p>Digital eye strain, chronic headaches, poor posture ("Tech Neck"), and insomnia.</p>
+                    </div>
+                </div>
+                <!-- ADDED BUTTON -->
+                <center>
+                    <button class="cyber-btn vis-btn" style="border-color:var(--neon-red); color:var(--neon-red);" onclick="openModal(3)">💀 SCAN PHYSICAL DAMAGE</button>
+                </center>
+            </div>
+        </section>
+
+        <!-- SECTION 4: SOLUTIONS (INTERACTIVE) -->
+        <section>
+            <div class="glass-card" style="border-color: var(--neon-green);">
+                <h2 style="color: var(--neon-green);">4. Install Antidote</h2>
+                <p>Reclaim your processing power. Activate these protocols now.</p>
+                
+                <div style="width: 100%; margin-top: 2rem;">
+                    
+                    <!-- Habit 1 -->
+                    <div class="habit-row" id="habit-1">
+                        <div>
+                            <h3>Limit Screen Time</h3>
+                            <p style="text-align: left; font-size: 0.9rem;">Set rigid limits. Even 30 mins less matters.</p>
+                        </div>
+                        <button class="cyber-btn" style="padding: 10px 20px; font-size: 0.8rem;" onclick="toggleHabit(1)">ACTIVATE</button>
+                    </div>
+
+                    <!-- Habit 2 -->
+                    <div class="habit-row" id="habit-2">
+                        <div>
+                            <h3>Device-Free Bedrooms</h3>
+                            <p style="text-align: left; font-size: 0.9rem;">No phones where you sleep. Period.</p>
+                        </div>
+                        <button class="cyber-btn" style="padding: 10px 20px; font-size: 0.8rem;" onclick="toggleHabit(2)">ACTIVATE</button>
+                    </div>
+
+                    <!-- Habit 3 -->
+                    <div class="habit-row" id="habit-3">
+                        <div>
+                            <h3>Kill Notifications</h3>
+                            <p style="text-align: left; font-size: 0.9rem;">Disable non-essential pings to regain focus.</p>
+                        </div>
+                        <button class="cyber-btn" style="padding: 10px 20px; font-size: 0.8rem;" onclick="toggleHabit(3)">ACTIVATE</button>
+                    </div>
+                     <!-- Habit 4 -->
+                     <div class="habit-row" id="habit-4">
+                        <div>
+                            <h3>Phone-Free Zones</h3>
+                            <p style="text-align: left; font-size: 0.9rem;">Eat meals without screens.</p>
+                        </div>
+                        <button class="cyber-btn" style="padding: 10px 20px; font-size: 0.8rem;" onclick="toggleHabit(4)">ACTIVATE</button>
+                    </div>
+
+                </div>
+                
+                <div style="margin-top: 20px; width: 100%; background: #222; height: 10px; border-radius: 5px;">
+                    <div id="habit-progress" style="width: 0%; height: 100%; background: var(--neon-green); transition: 0.5s;"></div>
+                </div>
+                <p style="font-size: 0.8rem; margin-top: 5px;">SYSTEM RECOVERY PROGRESS</p>
+            </div>
+        </section>
+
+        <!-- FOOTER / FINALE -->
+        <section style="min-height: 50vh;">
+            <h2 style="color: #fff;">READY TO DISCONNECT?</h2>
+            <p>Control your screen. Don't let it control you.</p>
+            
+            <button class="cyber-btn danger" onclick="breakTheCycle()">🛑 BREAK THE ILLUSION</button>
+            
+            <div style="margin-top: 50px; opacity: 0.5; font-size: 0.8rem;">
+                © 2025 Digital Wellness Campaign.<br>Designed for Awareness.
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        // --- LOADER ---
+        window.addEventListener('load', () => {
+            const fill = document.querySelector('.loader-fill');
+            fill.style.width = "100%";
+            setTimeout(() => {
+                document.getElementById('loader').style.opacity = '0';
+                setTimeout(() => document.getElementById('loader').remove(), 500);
+            }, 1000);
+        });
+
+        // --- CUSTOM CURSOR LOGIC ---
+        const cursor = document.getElementById('cursor');
+        document.addEventListener('mousemove', (e) => {
+            cursor.style.left = e.clientX + 'px';
+            cursor.style.top = e.clientY + 'px';
+        });
+
+        const hoverElements = document.querySelectorAll('button, .info-box, .habit-row');
+        hoverElements.forEach(el => {
+            el.addEventListener('mouseenter', () => cursor.classList.add('hovered'));
+            el.addEventListener('mouseleave', () => cursor.classList.remove('hovered'));
+        });
+
+        // --- THREE.JS BACKGROUND (EXISTING) ---
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.FogExp2(0x020202, 0.03); 
+
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.z = 5;
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        container.appendChild(renderer.domElement);
+
+        const particlesGeo = new THREE.BufferGeometry();
+        const particlesCount = 5000;
+        const posArray = new Float32Array(particlesCount * 3);
+        const colorArray = new Float32Array(particlesCount * 3);
+
+        for(let i=0; i < particlesCount * 3; i+=3) {
+            const r = 10 + Math.random() * 20;
+            const theta = Math.random() * Math.PI * 2;
+            const z = (Math.random() - 0.5) * 200;
+            posArray[i] = r * Math.cos(theta);
+            posArray[i+1] = r * Math.sin(theta);
+            posArray[i+2] = z;
+            colorArray[i] = 0; colorArray[i+1] = Math.random(); colorArray[i+2] = 1;
+        }
+
+        particlesGeo.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+        particlesGeo.setAttribute('color', new THREE.BufferAttribute(colorArray, 3));
+
+        const particlesMat = new THREE.PointsMaterial({
+            size: 0.1, vertexColors: true, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending
+        });
+        const particleMesh = new THREE.Points(particlesGeo, particlesMat);
+        scene.add(particleMesh);
+
+        const shapes = [];
+        const geometry = new THREE.OctahedronGeometry(1, 0);
+        const material = new THREE.MeshBasicMaterial({ color: 0x00f3ff, wireframe: true });
+
+        for(let i=0; i<15; i++) {
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.position.set((Math.random() - 0.5) * 30, (Math.random() - 0.5) * 30, (Math.random() - 0.5) * 50);
+            shapes.push(mesh);
+            scene.add(mesh);
+        }
+
+        let mouseX = 0, mouseY = 0;
+        document.addEventListener('mousemove', (e) => {
+            mouseX = (e.clientX - window.innerWidth/2) * 0.001;
+            mouseY = (e.clientY - window.innerHeight/2) * 0.001;
+        });
+
+        function animate() {
+            requestAnimationFrame(animate);
+            particleMesh.rotation.z += 0.001;
+            particleMesh.rotation.x += (mouseY - particleMesh.rotation.x) * 0.05;
+            particleMesh.rotation.y += (mouseX - particleMesh.rotation.y) * 0.05;
+            shapes.forEach((shape, i) => {
+                shape.rotation.x += 0.01;
+                shape.rotation.y += 0.01;
+                shape.position.z += 0.05;
+                if(shape.position.z > 10) shape.position.z = -50;
+            });
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        window.addEventListener('scroll', () => {
+            const h = document.documentElement;
+            const scrollPercent = h.scrollTop / (h.scrollHeight - h.clientHeight);
+            document.getElementById('scroll-progress').style.width = (scrollPercent * 100) + '%';
+            camera.position.z = 5 - (scrollPercent * 40);
+            camera.rotation.z = scrollPercent * 0.5;
+            document.querySelectorAll('section').forEach(sec => {
+                const rect = sec.getBoundingClientRect();
+                if(rect.top < window.innerHeight * 0.75) sec.classList.add('visible');
+            });
+        });
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // --- INTERACTIVE BUTTONS LOGIC ---
+        let activeHabits = 0;
+        function toggleHabit(id) {
+            const row = document.getElementById('habit-' + id);
+            const btn = row.querySelector('button');
+            const progress = document.getElementById('habit-progress');
+            
+            if (row.classList.contains('active')) {
+                row.classList.remove('active');
+                btn.innerText = "ACTIVATE";
+                btn.style.borderColor = "var(--neon-blue)";
+                btn.style.color = "var(--neon-blue)";
+                activeHabits--;
+            } else {
+                row.classList.add('active');
+                btn.innerText = "RUNNING";
+                btn.style.borderColor = "var(--neon-green)";
+                btn.style.color = "var(--neon-green)";
+                activeHabits++;
+            }
+            let pct = (activeHabits / 4) * 100;
+            progress.style.width = pct + '%';
+            if(pct === 100) progress.style.boxShadow = "0 0 20px var(--neon-green)";
+        }
+
+        // --- BROKEN SCREEN ANIMATION ---
+        function breakTheCycle() {
+            const overlay = document.getElementById('broken-overlay');
+            const main = document.querySelector('main');
+            const canvas = document.getElementById('canvas-container');
+            document.body.style.animation = "glitch-anim 0.2s infinite";
+            
+            setTimeout(() => {
+                document.body.style.animation = "none";
+                main.style.display = 'none';
+                canvas.style.display = 'none';
+                document.getElementById('cursor').style.display = 'none';
+                document.body.style.cursor = 'auto';
+                overlay.style.display = 'flex';
+                for(let i=0; i<10; i++) {
+                    let crack = document.createElement('div');
+                    crack.className = 'crack-line';
+                    crack.style.width = Math.random() * 300 + 'px';
+                    crack.style.height = '1px';
+                    crack.style.top = Math.random() * 100 + '%';
+                    crack.style.left = Math.random() * 100 + '%';
+                    crack.style.transform = `rotate(${Math.random() * 360}deg)`;
+                    crack.style.background = '#fff';
+                    crack.style.boxShadow = '0 0 10px #fff';
+                    overlay.appendChild(crack);
+                    gsap.to(crack, {opacity: 1, duration: 0.1, delay: i * 0.1});
+                }
+                gsap.to('.final-message', {opacity: 1, duration: 2, delay: 1.5});
+            }, 500);
+        }
+
+        // --- NEW: MODAL & VISUALIZATION LOGIC ---
+        let bodyScene, bodyCamera, bodyRenderer, bodyMesh;
+        let networkInterval;
+
+        function openModal(id) {
+            const modal = document.getElementById('viz-modal');
+            document.querySelectorAll('.modal-content').forEach(c => c.classList.remove('active'));
+            document.getElementById('vis-' + id).classList.add('active');
+            
+            modal.style.display = 'flex';
+            setTimeout(() => modal.style.opacity = '1', 10);
+
+            if(id === 1) initNeural();
+            if(id === 3) initBody3D();
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('viz-modal');
+            modal.style.opacity = '0';
+            setTimeout(() => {
+                modal.style.display = 'none';
+                if(networkInterval) clearInterval(networkInterval);
+            }, 500);
+        }
+
+        // Viz 1: Neural (Canvas 2D)
+        function initNeural() {
+            const canvas = document.getElementById('neural-canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = canvas.parentElement.offsetWidth;
+            canvas.height = canvas.parentElement.offsetHeight;
+            
+            const nodes = [];
+            for(let i=0; i<60; i++) {
+                nodes.push({
+                    x: Math.random() * canvas.width, y: Math.random() * canvas.height,
+                    vx: (Math.random()-0.5)*3, vy: (Math.random()-0.5)*3
+                });
+            }
+
+            if(networkInterval) clearInterval(networkInterval);
+            networkInterval = setInterval(() => {
+                ctx.clearRect(0,0,canvas.width, canvas.height);
+                ctx.fillStyle = '#00f3ff';
+                ctx.strokeStyle = 'rgba(0, 243, 255, 0.1)';
+                
+                nodes.forEach((n, i) => {
+                    n.x += n.vx; n.y += n.vy;
+                    if(n.x < 0 || n.x > canvas.width) n.vx *= -1;
+                    if(n.y < 0 || n.y > canvas.height) n.vy *= -1;
+                    ctx.beginPath(); ctx.arc(n.x, n.y, 2, 0, Math.PI*2); ctx.fill();
+                    nodes.forEach((n2, j) => {
+                        if(i!==j) {
+                            let d = Math.hypot(n.x-n2.x, n.y-n2.y);
+                            if(d < 100) { ctx.beginPath(); ctx.moveTo(n.x, n.y); ctx.lineTo(n2.x, n2.y); ctx.stroke(); }
+                        }
+                    });
+                });
+            }, 30);
+        }
+
+        // Viz 3: Body 3D (Three.js Separate Scene)
+        function initBody3D() {
+            if(bodyScene) return;
+            const container = document.getElementById('body-container');
+            bodyScene = new THREE.Scene();
+            bodyCamera = new THREE.PerspectiveCamera(75, container.offsetWidth/container.offsetHeight, 0.1, 1000);
+            bodyCamera.position.z = 6;
+            bodyRenderer = new THREE.WebGLRenderer({alpha:true, antialias:true});
+            bodyRenderer.setSize(container.offsetWidth, container.offsetHeight);
+            container.appendChild(bodyRenderer.domElement);
+
+            const grp = new THREE.Group();
+            const mat = new THREE.MeshBasicMaterial({color:0x555555, wireframe:true});
+            const red = new THREE.MeshBasicMaterial({color:0xff003c, wireframe:true});
+
+            const head = new THREE.Mesh(new THREE.IcosahedronGeometry(1,1), red); head.position.y=2; grp.add(head);
+            const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.8,0.5,2.5,8), mat); grp.add(torso);
+            const spine = new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.1,2.8,6), red); grp.add(spine);
+            
+            bodyScene.add(grp);
+            bodyMesh = grp;
+
+            function animateBody() {
+                requestAnimationFrame(animateBody);
+                if(document.getElementById('vis-3').classList.contains('active')) {
+                    bodyMesh.rotation.y += 0.01;
+                    bodyRenderer.render(bodyScene, bodyCamera);
+                }
+            }
+            animateBody();
+        }
+    </script>
+</body>
+</html>
